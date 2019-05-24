@@ -69,6 +69,30 @@
             Action<IContainerBuilder> configureAction,
             Action<ODataConventionConfigurationContext> configureRoutingConventions )
         {
+            return MapVersionedODataRoutes( builder, routeName, routePrefix, models, ( container, model ) => configureAction?.Invoke( container ), configureRoutingConventions );
+        }
+
+        /// <summary>
+        /// Maps the specified versioned OData routes.
+        /// </summary>
+        /// <param name="builder">The extended <see cref="IRouteBuilder">route builder</see>.</param>
+        /// <param name="routeName">The name of the route to map.</param>
+        /// <param name="routePrefix">The prefix to add to the OData route's path template.</param>
+        /// <param name="models">The <see cref="IEnumerable{T}">sequence</see> of <see cref="IEdmModel">EDM models</see> to use for parsing OData paths.</param>
+        /// <param name="configureAction">The configuring action to add the services to the root container.</param>
+        /// <param name="configureRoutingConventions">The configuring action to add or update routing conventions.</param>
+        /// <returns>The <see cref="IReadOnlyList{T}">read-only list</see> of added <see cref="ODataRoute">OData routes</see>.</returns>
+        /// <remarks>The specified <paramref name="models"/> must contain the <see cref="ApiVersionAnnotation">API version annotation</see>.  This annotation is
+        /// automatically applied when you use the <see cref="VersionedODataModelBuilder"/> and call <see cref="VersionedODataModelBuilder.GetEdmModels"/> to
+        /// create the <paramref name="models"/>.</remarks>
+        public static IReadOnlyList<ODataRoute> MapVersionedODataRoutes(
+            this IRouteBuilder builder,
+            string routeName,
+            string routePrefix,
+            IEnumerable<IEdmModel> models,
+            Action<IContainerBuilder, IEdmModel> configureAction,
+            Action<ODataConventionConfigurationContext> configureRoutingConventions )
+        {
             Arg.NotNull( builder, nameof( builder ) );
             Arg.NotNullOrEmpty( routeName, nameof( routeName ) );
             Arg.NotNull( models, nameof( models ) );
@@ -106,7 +130,7 @@
                     {
                         container.AddService( Singleton, typeof( IEdmModel ), sp => model )
                                  .AddService( Singleton, typeof( IEnumerable<IODataRoutingConvention> ), sp => ConfigureRoutingConventions( model, versionedRouteName, apiVersion ) );
-                        configureAction?.Invoke( container );
+                        configureAction?.Invoke( container, model );
                     } );
                 var rootContainer = perRouteContainer.CreateODataRootContainer( versionedRouteName, preConfigureAction );
                 var router = rootContainer.GetService<IRouter>() ?? builder.DefaultHandler;
